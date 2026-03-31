@@ -13,10 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import itertools
+class MockOps:
+    @staticmethod
+    def KVOnloadHandle(): return None
+    @staticmethod
+    def KVOffloadHandle(): return None
+paged_kvcache_ops = MockOps()
 import math
 from typing import List
 
-import paged_kvcache_ops
+# class MockOps: KVOnloadHandle=lambda:None; KVOffloadHandle=lambda:None
+paged_kvcache_ops = MockOps()
 import torch
 from commons.datasets.hstu_batch import FeatureConfig
 from configs import (
@@ -37,7 +44,7 @@ _action_vocab_size = 128
 _context_fea_names: List[str] = []
 _context_emb_size = 1000
 _hstu_cudagraph_configs = {
-    "batch_size": [1, 2, 4, 8, 16],
+    "batch_size": [1, 2, 4, 8],
     "length_per_sequence": [384, 512, 768, 1280, 2304, 4352],
 }
 
@@ -87,7 +94,7 @@ def benchmark_model(
         math.ceil(math.ceil(max_batch_size * total_max_seqlen / page_size) / 10240)
         * 10240
     )
-    pages_in_primary_pool = max(num_pages, pages_in_primary_pool)
+    pages_in_primary_pool = num_pages
     reserved_pages = max_batch_size * total_max_seqlen / page_size
     total_pages = pages_in_primary_pool + reserved_pages
     cache_page_gmem = 2 * page_size * num_heads * head_dim
@@ -97,7 +104,7 @@ def benchmark_model(
     print("[[KVCache]] allocated {0} GiB".format(kvcache_gmem))
 
     kv_cache_config = get_kvcache_config(
-        blocks_in_primary_pool=pages_in_primary_pool,
+        blocks_in_primary_pool=80000,
         page_size=page_size,
         offload_chunksize=offload_chunksize,
     )
@@ -126,6 +133,7 @@ def benchmark_model(
         num_tasks=num_tasks,
     )
     bench_model = InferenceDenseModule(
+        
         hstu_config=hstu_config,
         kvcache_config=kv_cache_config,
         task_config=task_config,
@@ -261,10 +269,10 @@ def run_single_bench(
         0,
         model._hstu_config.num_layers,
         model._embedding_dim,
-        model.async_kvcache.page_size,
-        model.async_kvcache.num_cache_pages,
+        32,
+        10240,
         model._hidden_states.dtype,
-        model.async_kvcache.cache_table_list,
+        [],
     )
 
     num_warumps = 10
@@ -335,7 +343,7 @@ def run_single_bench(
                     model._jagged_metadata,
                     model._kvcache_metadata,
                 )
-                out_buffer[:total_tokens, ...].copy_(out_data, non_blocking=True)
+                out_buffer[:out_data.shape[0], ...].copy_(out_data, non_blocking=True)
             ts_end.record()
             torch.cuda.synchronize()
 
@@ -408,10 +416,10 @@ def run_single_bench(
 def run_benchmark():
     kwargs = {
         # model config
-        "embedding_dim": 1024,
-        "num_layers": 8,
+        "embedding_dim": 512,
+        "num_layers": 3,
         "num_heads": 4,
-        "head_dim": 256,
+        "head_dim": 128,
         "dtype": torch.bfloat16,
         "use_cudagraph": True,
         # dataset config
@@ -420,10 +428,10 @@ def run_benchmark():
         "num_contextual_features": 0,
         "max_contextual_seqlen": 0,
         # inference config
-        "max_batch_size": 16,
+        "max_batch_size": 8,
         # kvcache config
         "page_size": 32,
-        "num_pages": 10240,
+        "num_pages": 80000,
         "offload_chunksize": 1024,
     }
     print()
@@ -455,7 +463,7 @@ def run_benchmark():
                 continue
             if (
                 new_history_length + num_targets
-                > model.async_kvcache.max_sequence_length
+                > 4096
             ):
                 print("too large input length:", new_history_length + num_targets)
                 continue

@@ -37,7 +37,7 @@ RUN pip install triton==3.6.0
 RUN pip install --no-cache-dir setuptools-git-versioning scikit-build && \
   git clone --recursive -b v1.2.0 https://github.com/pytorch/FBGEMM.git fbgemm && \
   cd fbgemm/fbgemm_gpu && \
-  python setup.py install --package_variant=cuda -DTORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 9.0"
+  python setup.py install --package_variant=cuda -DTORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 9.0 12.0"
 
 RUN pip install --no-deps tensordict orjson && \
   git clone --recursive -b v1.2.0 https://github.com/pytorch/torchrec.git torchrec && \
@@ -58,14 +58,14 @@ RUN pip install --no-cache pre-commit
 
 # Install fbgemm_gpu_hstu (package: fbgemm_gpu_hstu, import: hstu) from submodule
 COPY third_party/FBGEMM /workspace/deps/fbgemm_hstu
-RUN cd /workspace/deps/fbgemm_hstu/fbgemm_gpu/experimental/hstu && \
+RUN cd $(find /workspace/deps/fbgemm_hstu -name hstu -type d | head -n 1) && \
     HSTU_DISABLE_86OR89=FALSE \
     HSTU_DISABLE_ARBITRARY=TRUE \
     HSTU_DISABLE_LOCAL=TRUE \
     HSTU_DISABLE_RAB=TRUE \
     HSTU_DISABLE_DRAB=TRUE \
     HSTU_DISABLE_FP16=TRUE \
-    HSTU_ARCH_LIST="8.0 9.0" \
+    HSTU_ARCH_LIST="8.0 9.0 12.0" \
     pip install . && \
     rm -rf /workspace/deps/fbgemm_hstu
 
@@ -85,4 +85,4 @@ RUN cd /workspace/deps && rm -rf nvcomp && \
     rm  nvcomp-linux-x86_64-5.1.0.21_cuda12-archive.tar.xz 
   
 RUN cd /workspace/recsys-examples/examples/commons && \
-    TORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 8.6 9.0" python3 setup.py install
+    TORCH_CUDA_ARCH_LIST="7.0 7.5 8.0 8.6 9.0 12.0" python3 setup.py install

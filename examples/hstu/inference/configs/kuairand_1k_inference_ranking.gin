@@ -7,9 +7,9 @@ NetworkArgs.num_layers = 3
 NetworkArgs.num_attention_heads = 4
 NetworkArgs.hidden_size = 512
 NetworkArgs.kv_channels = 128
+# Use a library-supported type
+NetworkArgs.dtype_str = 'bfloat16' 
 
-RankingArgs.prediction_head_arch = [
-    512, 8
-]
+RankingArgs.prediction_head_arch = [512, 8]
 RankingArgs.prediction_head_bias = True
 RankingArgs.num_tasks = 8

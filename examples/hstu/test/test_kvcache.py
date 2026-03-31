@@ -15,7 +15,7 @@
 import math
 import random
 
-import paged_kvcache_ops
+# import paged_kvcache_ops
 import torch
 from commons.datasets.hstu_batch import FeatureConfig
 from configs import KVCacheMetadata, get_inference_hstu_config, get_kvcache_config

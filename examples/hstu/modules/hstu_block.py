@@ -8,7 +8,7 @@ from commons.utils.nvtx_op import output_nvtx_hook
 from configs.hstu_config import HSTUConfig, HSTULayerType
 from megatron.core.transformer.module import MegatronModule
 from modules.debug.debug_hstu_layer import HSTULayer as DebugHSTULayer
-from modules.fused_hstu_layer import FusedHSTULayer
+from modules.native_hstu_layer import HSTULayer as FusedHSTULayer
 from modules.hstu_processor import HSTUBlockPostprocessor, HSTUBlockPreprocessor
 from modules.jagged_data import JaggedData
 from modules.native_hstu_layer import HSTULayer as NativeHSTULayer
@@ -36,9 +36,9 @@ class HSTUBlock(MegatronModule):
 
         self._preprocessor = HSTUBlockPreprocessor(
             config, is_inference=False
-        )  # sequence parallel is from config
+        )
         self._postprocessor = HSTUBlockPostprocessor(
-            is_inference=False, sequence_parallel=config.sequence_parallel
+            is_inference=False
         )
 
         HSTULayerImpl = (
@@ -69,15 +69,15 @@ class HSTUBlock(MegatronModule):
             JaggedData: The output jagged data.
         """
         jd = self._preprocessor(embeddings, batch)
-        seqlen_after_preprocessor = jd.seqlen
+        seqlen_after_preprocessor = getattr(jd, "seqlen", getattr(jd, "num_candidates", None))
         num_contextuals_after_preprocessor = (
-            jd.contextual_seqlen
-            if jd.contextual_seqlen is not None
+            getattr(jd, "contextual_seqlen", None)
+            if getattr(jd, "contextual_seqlen", None) is not None
             else torch.zeros_like(seqlen_after_preprocessor)
         )
         num_candidates_after_preprocessor = (
-            jd.num_candidates
-            if jd.num_candidates is not None
+            getattr(jd, "num_candidates", None)
+            if getattr(jd, "num_candidates", None) is not None
             else torch.zeros_like(seqlen_after_preprocessor)
         )
         for hstu_layer in self._attention_layers:

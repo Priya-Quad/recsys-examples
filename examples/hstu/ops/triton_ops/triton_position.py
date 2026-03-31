@@ -119,7 +119,7 @@ def _add_position_embeddings_kernel(
     jagged_ptr_offsets = offs_n[:, None] * stride_jn + offs_d[None, :]
     Out += seq_start.to(tl.int64) * stride_on
     out_ptrs = Out + offs_n[:, None] * stride_on + offs_d[None, :]
-    dense_ptrs = Dense + clamped_offs_n[:, None] * stride_dk + offs_d[None, :]
+    dense_ptrs = Dense + (clamped_offs_n[:, None] * stride_dk + offs_d[None, :]).to(tl.int64)
     for _d in range(0, D, BLOCK_D):
         mask = (offs_n[:, None] < seq_len) and offs_d[None, :] < D
         jg = tl.load(Jagged + jagged_ptr_offsets, mask=mask)

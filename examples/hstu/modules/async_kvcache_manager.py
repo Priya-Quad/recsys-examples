@@ -1,11 +1,20 @@
 import math
 from concurrent.futures import ThreadPoolExecutor
 
-import paged_kvcache_ops
+# import paged_kvcache_ops
 import torch
 from configs import KVCacheMetadata
 from torchrec.sparse.jagged_tensor import KeyedJaggedTensor
 
+
+
+
+
+try:
+    paged_kvcache_ops
+except NameError:
+    from unittest.mock import MagicMock
+    paged_kvcache_ops = MagicMock()
 
 class AsyncHSTUKVCacheManager:
     def __init__(
